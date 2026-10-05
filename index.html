@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>REACT: Rolling Denoising and Dual Decoupling for Reactive Robot Control</title>
+  <meta name="description" content="REACT turns flow-based VLA action chunking into rolling denoising, so robots react to fresh observations without giving up smooth, long-horizon motion. CoRL 2026 Spotlight.">
+
+  <link rel="canonical" href="https://react-vla.github.io/">
+  <meta property="og:url" content="https://react-vla.github.io/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="REACT: Rolling Denoising and Dual Decoupling for Reactive Robot Control with VLA Models">
+  <meta property="og:description" content="Rolling denoising + Dual Decoupling make flow-based VLAs reactive while keeping long-horizon coherence. CoRL 2026 Spotlight.">
+  <meta property="og:image" content="https://react-vla.github.io/static/images/social_preview.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="REACT: Reactive Robot Control with VLA Models">
+  <meta name="twitter:image" content="https://react-vla.github.io/static/images/social_preview.jpg">
+
+  <!-- Google Scholar -->
+  <meta name="citation_title" content="REACT: Rolling Denoising and Dual Decoupling for Reactive Robot Control with VLA Models">
+  <meta name="citation_author" content="Xiong, Houlong">
+  <meta name="citation_author" content="Qiu, Zhenqi">
+  <meta name="citation_author" content="Wang, Zechen">
+  <meta name="citation_author" content="Zhang, Suohang">
+  <meta name="citation_author" content="Ren, Yiyu">
+  <meta name="citation_author" content="Xu, Wanting">
+  <meta name="citation_author" content="Niu, Hongfei">
+  <meta name="citation_author" content="He, Chengyang">
+  <meta name="citation_author" content="Sun, Ge">
+  <meta name="citation_author" content="Cheng, Ran">
+  <meta name="citation_author" content="Zhu, Qian">
+  <meta name="citation_publication_date" content="2026">
+  <meta name="citation_conference_title" content="Conference on Robot Learning">
+
+  <link rel="icon" href="static/images/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="static/images/apple-touch-icon.png">
+  <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1 class="title"><span class="title-main">REACT</span>
+      <span class="title-sub">Rolling Denoising and Dual Decoupling for<br class="br-wide"> Reactive Robot Control with VLA Models</span>
+    </h1>
+
+    <p class="authors">
+      <span>Houlong Xiong<sup>1,2*</sup></span>
+      <span>Zhenqi Qiu<sup>2,3*</sup></span>
+      <span>Zechen Wang<sup>2*</sup></span>
+      <span>Suohang Zhang<sup>4</sup></span>
+      <span>Yiyu Ren<sup>2</sup></span>
+      <span>Wanting Xu<sup>3</sup></span>
+      <span>Hongfei Niu<sup>2</sup></span>
+      <span>Chengyang He<sup>5</sup></span>
+      <span>Ge Sun<sup>5</sup></span>
+      <span>Ran Cheng<sup>2</sup></span>
+      <span>Qian Zhu<sup>2†</sup></span>
+    </p>
+    <p class="affils">
+      <span><sup>1</sup>Shanghai Jiao Tong University</span>
+      <span><sup>2</sup>PrimeBot</span>
+      <span><sup>3</sup>ShanghaiTech University</span>
+      <span><sup>4</sup>Zhejiang University</span>
+      <span><sup>5</sup>National University of Singapore</span>
+    </p>
+    <p class="marks"><sup>*</sup>Equal contribution &nbsp;·&nbsp; <sup>†</sup>Corresponding author</p>
+
+    <p class="venue"><span class="badge">CoRL 2026 · Spotlight</span></p>
+
+    <!-- Buttons whose href is empty are hidden automatically (see main.js). Fill them in when the links exist. -->
+    <nav class="links" aria-label="Paper links">
+      <a class="btn" data-link href="">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 2v6h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        Paper</a>
+      <a class="btn" data-link href="">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l16 16M20 4L4 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        arXiv</a>
+      <a class="btn" data-link href="#videos">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg>
+        Videos</a>
+      <a class="btn" data-link href="#bibtex">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h6v6H7c0 2 1 3 3 3v3c-4 0-5-3-5-6zm9 0h6v6h-4c0 2 1 3 3 3v3c-4 0-5-3-5-6z" fill="currentColor"/></svg>
+        BibTeX</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ Teaser ============ -->
+<section id="videos" class="section teaser">
+  <div class="wrap wide">
+    <h2 class="kicker">The target bowl is moved mid-grasp</h2>
+    <div class="compare" data-sync-group="teaser">
+      <figure class="vcell">
+        <figcaption class="vlabel">π<sub>0.5</sub> · standard horizon</figcaption>
+        <video muted playsinline preload="metadata" poster="static/videos/teaser_standard.jpg" src="static/videos/teaser_standard.mp4" aria-label="Standard-horizon baseline rollout"></video>
+        <p class="verdict">Keeps executing a stale chunk after the bowl moves.</p>
+      </figure>
+      <figure class="vcell">
+        <figcaption class="vlabel">π<sub>0.5</sub> · short execution horizon</figcaption>
+        <video muted playsinline preload="metadata" poster="static/videos/teaser_short.jpg" src="static/videos/teaser_short.mp4" aria-label="Short-horizon baseline rollout"></video>
+        <p class="verdict">Replans often, but moves in a fragmented stop-and-replan pattern.</p>
+      </figure>
+      <figure class="vcell ours">
+        <figcaption class="vlabel">REACT (ours)</figcaption>
+        <video muted playsinline preload="metadata" poster="static/videos/teaser_react.jpg" src="static/videos/teaser_react.mp4" aria-label="REACT rollout"></video>
+        <p class="verdict">Adapts to the new target while keeping a smooth approach.</p>
+      </figure>
+    </div>
+    <div class="sync-bar"><button class="play-all" data-sync-target="teaser" type="button"><span aria-hidden="true">▶&nbsp; </span>Play all together</button></div>
+
+    <div class="stats">
+      <div class="stat"><b>64.8%</b><span>real-world success<br>best π<sub>0.5</sub> baseline 58.7%, Async+RTC 17.7%</span></div>
+      <div class="stat"><b>~2×</b><span>faster reaction than full-chunk π<sub>0.5</sub><br>734 ms vs. 1505 ms (human teleop. 705 ms)</span></div>
+      <div class="stat"><b>63%</b><span>Pour Rice success<br>vs. ≤33% for every baseline</span></div>
+      <div class="stat"><b>Smoother</b><span>than Async+RTC on all 3 platforms<br>&gt;3× lower jerk on ARX X5</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TL;DR + Abstract ============ -->
+<section class="section">
+  <div class="wrap">
+    <p class="tldr"><b>TL;DR</b> REACT turns flow-based VLA action chunking into <em>rolling denoising</em>: future action blocks are refined under several fresh observations before they are executed, so the robot reacts quickly without giving up smooth, long-horizon motion. <em>Dual Decoupling</em> then streams actions at camera rate on a single GPU.</p>
+
+    <h2>Abstract</h2>
+    <p class="abstract">Flow-based vision-language-action (VLA) models generate action chunks for temporally coherent robot motion, but chunked control creates a fundamental closed-loop trade-off: long chunks provide smooth execution, whereas frequent replanning improves reactivity at the cost of action discontinuities. We introduce REACT, a rolling-denoising framework that makes flow-based VLAs more reactive while preserving long-horizon context. Instead of regenerating entire action chunks from scratch, REACT maintains a persistent action buffer with staggered flow timesteps. At each control step, the full horizon is denoised using the latest observation, the cleanest action block is executed, partially refined future blocks are shifted forward, and fresh noise is appended to the tail. As a result, each executed action block is refined across multiple recent observations before deployment. To support real-time control, we further introduce dual decoupling, which separates sensing, VLM encoding, DiT denoising, and action execution, enabling high-frequency observation updates and action streaming under practical compute constraints. Across the RoboTwin 2.0 simulation benchmark and real-world tasks spanning bimanual manipulation and dynamic control on multiple robot platforms, REACT improves task success and reduces reaction latency while producing smoother trajectories than frequent-replanning and asynchronous baselines.</p>
+  </div>
+</section>
+
+<!-- ============ Motivation ============ -->
+<section class="section alt">
+  <div class="wrap wide">
+    <h2>The coherence–freshness trade-off</h2>
+    <p class="lead">A closed-loop VLA must both incorporate fresh observations often (<em>input throughput</em>) and keep producing executable actions (<em>output throughput</em>). Faster inference and shorter chunks each address only part of this.</p>
+    <div class="cards two">
+      <article class="card">
+        <h3>Faster inference is not enough</h3>
+        <p>Executing a 50-action chunk dominates the control cycle, so even 2× faster inference only lifts fresh-observation throughput from 0.58 Hz to 0.59 Hz.</p>
+        <table class="tbl compact">
+          <thead><tr><th scope="col">Scheme</th><th scope="col">Φ<sub>in</sub> (Hz)</th><th scope="col">Φ<sub>out</sub> (Hz)</th></tr></thead>
+          <tbody>
+            <tr><td>Synchronous, H<sub>e</sub>=50</td><td>0.58</td><td>28.8</td></tr>
+            <tr><td>Sync + 2× acceleration, H<sub>e</sub>=50</td><td>0.59</td><td>29.4</td></tr>
+            <tr><td>Synchronous, H<sub>e</sub>=10</td><td>2.50</td><td>25.0</td></tr>
+            <tr><td>Asynchronous, H<sub>e</sub>=10</td><td>3.00</td><td>30.0</td></tr>
+            <tr class="ours"><td>REACT (S=10)</td><td>3.00</td><td>30.0</td></tr>
+          </tbody>
+        </table>
+        <p class="note">REACT matches asynchronous throughput while keeping the full 50-action rolling buffer instead of independent 10-action chunks. Analytical estimate for π<sub>0.5</sub> on one RTX 4090 (T<sub>VLM</sub>=37 ms, T<sub>DiT</sub>=3 ms, 10 denoising steps, 30 Hz camera and control).</p>
+      </article>
+      <article class="card">
+        <h3>Shorter chunks break action coherence</h3>
+        <p>Replanning every few actions refreshes observations, but every chunk boundary is a chance to switch to a different action mode. Asynchronous execution hides latency, yet still stitches chunks predicted from observations that no longer match the scene.</p>
+        <ul class="fail-list">
+          <li><b>Long chunks go stale.</b> π<sub>0.5</sub> H50E50 keeps pouring after the rice passes the mark: 3% success on Pour Rice.</li>
+          <li><b>Short chunks retry and switch modes.</b> π<sub>0.5</sub> H50E10 keeps returning to the cap instead of twisting it: 0% on Bottle Cap Unscrewing on both robots.</li>
+          <li><b>Async chunks are stitched.</b> Async+RTC has the highest simulation jerk of all methods (2022.2) and only 17.7% real-world success.</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Overview ============ -->
+<section class="section">
+  <div class="wrap wide">
+    <h2>Overview</h2>
+    <figure class="fig">
+      <a href="static/images/overview.png" target="_blank" rel="noopener"><img src="static/images/overview.png" width="2072" height="1118" alt="REACT overview: a rolling action buffer is refined under consecutive observations; throughput and performance comparison."></a>
+      <figcaption>REACT refines the whole active horizon under each new observation, executes the cleanest block, shifts the partially refined blocks forward, and appends fresh noise. Colored borders track the same action block as it is refined across observations. Right: REACT reaches the high-input, high-output throughput regime. <span class="hint">Click to enlarge.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ Method ============ -->
+<section id="method" class="section alt">
+  <div class="wrap wide">
+    <h2>Method</h2>
+
+    <div class="method-row">
+      <div class="method-text">
+        <h3>1 · Rolling denoising</h3>
+        <p>REACT keeps a persistent buffer of <i>H</i> = <i>K</i>·<i>S</i> = 50 actions split into <i>K</i> = 5 blocks of <i>S</i> = 10, with staircase flow times τ<sub>j</sub> = (⌊<i>j</i>/<i>S</i>⌋ + 1)/<i>K</i>: the front block is nearly clean, the tail is pure noise.</p>
+        <p>Each control update applies <b>one</b> DiT Euler step to the whole buffer under the latest observation, executes the now-clean front block, shifts the remaining blocks forward, and appends fresh noise. Every executed block has therefore been refined across multiple recent observations — while the policy still reasons over the full 50-action horizon.</p>
+      </div>
+      <div class="method-vis">
+        <figure class="roll" id="roll" aria-label="Animation of the rolling action buffer">
+          <div class="roll-obs"><span class="obs-chip" id="roll-obs">observation o<sub>t</sub></span><span class="obs-arrow" aria-hidden="true">↓ one Euler step on all blocks</span></div>
+          <div class="roll-track" id="roll-track"></div>
+          <div class="roll-axis"><span>← executed next</span><span>far future →</span></div>
+          <div class="roll-foot">
+            <span class="legend"><i class="sw sw-noise"></i>pure noise</span>
+            <span class="legend"><i class="sw sw-clean"></i>clean action</span>
+            <button class="ghost" id="roll-toggle" type="button" aria-pressed="false">Pause</button>
+          </div>
+          <figcaption class="roll-caption">Each tick: one Euler step under the newest observation → execute the clean front block → shift → append noise at the tail. Border colors follow one block over time, as in the Overview figure.</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <div class="method-row stack">
+      <div class="method-text">
+        <h3>2 · Dual Decoupling</h3>
+        <p>A serialized implementation would wait for VLM encoding, DiT denoising and execution before using the next observation. Dual Decoupling is an inference-time scheduler that leaves the weights unchanged: sensing selects one frame every <i>S</i> camera periods, a pool of <i>M</i> VLM workers encodes frames into a latest-ready cache, and each DiT update consumes the freshest embedding together with the rolling buffer.</p>
+        <p>With <i>S</i> = 10 and <i>M</i> = 2 workers on one RTX 4090, REACT consumes observations at 3 Hz and streams actions at 30 Hz. The embedding is on average 233 ms old (p95 383 ms, max 416 ms) against a 333 ms observation period, so conditioning is never more than one selected observation behind.</p>
+      </div>
+      <div class="method-vis">
+        <figure class="fig plain">
+          <a href="static/images/dual_decoupling.png" target="_blank" rel="noopener"><img src="static/images/dual_decoupling.png" width="2141" height="1178" alt="Dual Decoupling timing diagram: parallel VLM workers feed a latest-ready cache consumed by rolling DiT denoising." loading="lazy"></a>
+        </figure>
+      </div>
+    </div>
+
+    <div class="method-row">
+      <div class="method-text">
+        <h3>3 · Staircase training</h3>
+        <p>Standard flow matching samples a single random timestep for the whole chunk. REACT instead trains the action expert on the same per-block noise levels {1/<i>K</i>, 2/<i>K</i>, …, 1} that rolling inference queries, supervising all <i>K</i> denoising stages in one forward pass.</p>
+        <p>Training therefore matches deployment, and each demonstration covers every stage the scheduler needs; empirically this also speeds up training (see <a href="#training">below</a>).</p>
+      </div>
+      <div class="method-vis">
+        <figure class="stair-fig" aria-label="Staircase flow times across the five action blocks">
+          <div class="stair">
+            <div class="stair-y" aria-hidden="true"><span>noise level τ</span></div>
+            <div class="stair-col"><div class="bar" style="--n:.2"></div><span>B<sub>0</sub><br>τ=0.2</span></div>
+            <div class="stair-col"><div class="bar" style="--n:.4"></div><span>B<sub>1</sub><br>τ=0.4</span></div>
+            <div class="stair-col"><div class="bar" style="--n:.6"></div><span>B<sub>2</sub><br>τ=0.6</span></div>
+            <div class="stair-col"><div class="bar" style="--n:.8"></div><span>B<sub>3</sub><br>τ=0.8</span></div>
+            <div class="stair-col"><div class="bar" style="--n:1"></div><span>B<sub>4</sub><br>τ=1.0</span></div>
+          </div>
+          <figcaption class="note center">Training samples exactly these per-block noise levels — the same ones rolling inference sees (<i>K</i> = 5).</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Simulation ============ -->
+<section id="simulation" class="section">
+  <div class="wrap wide">
+    <h2>Simulation: RoboTwin 2.0</h2>
+    <p class="lead">Seven bimanual tasks, 50 demonstrations per task, 100 evaluation rollouts per task under Clean and Randomized conditions.</p>
+    <div class="view-toggle" role="group" aria-label="Camera view">
+      <button type="button" class="seg active" data-view="world" aria-pressed="true">Scene view</button>
+      <button type="button" class="seg" data-view="head" aria-pressed="false">Head camera</button>
+    </div>
+    <div class="grid sim" id="sim-grid"
+         data-tasks="beat_block_hammer:Beat Block Hammer,click_bell:Click Bell,move_playingcard_away:Move Playing Card Away,pick_diverse_bottles:Pick Diverse Bottles,press_stapler:Press Stapler,rotate_qrcode:Rotate QR Code,turn_switch:Turn Switch"></div>
+
+    <p class="tbl-caption">Average success rate (%) over the seven tasks. Best in bold, second best underlined.</p>
+    <div class="table-scroll">
+    <table class="tbl results">
+      <thead><tr><th scope="col">Setting</th><th scope="col">π<sub>0.5</sub><br>H50E50</th><th scope="col">π<sub>0.5</sub><br>H50E10</th><th scope="col">π<sub>0.5</sub><br>H10E10</th><th scope="col">Async<br>+RTC</th><th scope="col" class="ours">REACT<br>w/o DD</th><th scope="col" class="ours">REACT</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Clean</th><td>37.43</td><td>33.71</td><td>10.86</td><td>33.29</td><td class="ours"><b>49.71</b></td><td class="ours"><u>44.86</u></td></tr>
+        <tr><th scope="row">Randomized</th><td>11.43</td><td>8.71</td><td>2.43</td><td>10.57</td><td class="ours"><b>20.86</b></td><td class="ours"><u>19.86</u></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Real world ============ -->
+<section id="real" class="section alt">
+  <div class="wrap wide">
+    <h2>Real world: ARX X5 and Franka Research 3</h2>
+    <p class="lead">Two bimanual platforms, six platform–task pairs spanning size-based reasoning, bimanual coordination and deformable or articulated objects; 30 trials per task with matched randomized placements.</p>
+
+    <div class="grid real">
+      <div class="row-label">ARX X5</div>
+      <figure class="vcell"><video class="lazy" muted playsinline loop preload="none" poster="static/videos/real_arx_bowl_stacking.jpg" data-src="static/videos/real_arx_bowl_stacking.mp4" aria-label="ARX X5 Bowl Stacking by Size"></video><figcaption>Bowl Stacking by Size</figcaption></figure>
+      <figure class="vcell"><video class="lazy" muted playsinline loop preload="none" poster="static/videos/real_arx_bottle_cap.jpg" data-src="static/videos/real_arx_bottle_cap.mp4" aria-label="ARX X5 Bottle Cap Unscrewing"></video><figcaption>Bottle Cap Unscrewing</figcaption></figure>
+      <figure class="vcell"><video class="lazy" muted playsinline loop preload="none" poster="static/videos/real_arx_cable_hanging.jpg" data-src="static/videos/real_arx_cable_hanging.mp4" aria-label="ARX X5 Cable Hanging"></video><figcaption>Cable Hanging</figcaption></figure>
+      <div class="row-label">Franka R3</div>
+      <figure class="vcell"><video class="lazy" muted playsinline loop preload="none" poster="static/videos/real_franka_bowl_stacking.jpg" data-src="static/videos/real_franka_bowl_stacking.mp4" aria-label="Franka Bowl Stacking by Size"></video><figcaption>Bowl Stacking by Size</figcaption></figure>
+      <figure class="vcell"><video class="lazy" muted playsinline loop preload="none" poster="static/videos/real_franka_bottle_cap.jpg" data-src="static/videos/real_franka_bottle_cap.mp4" aria-label="Franka Bottle Cap Unscrewing"></video><figcaption>Bottle Cap Unscrewing</figcaption></figure>
+      <figure class="vcell"><video class="lazy" muted playsinline loop preload="none" poster="static/videos/real_franka_keyring_hanging.jpg" data-src="static/videos/real_franka_keyring_hanging.mp4" aria-label="Franka Keyring Hanging"></video><figcaption>Keyring Hanging</figcaption></figure>
+    </div>
+    <p class="note center">Click any video to pause or resume.</p>
+
+    <p class="tbl-caption">Real-world success rate (%). Best in bold, second best underlined.</p>
+    <div class="table-scroll">
+    <table class="tbl results real-tbl">
+      <thead><tr><th scope="col">Robot</th><th scope="col">Task</th><th scope="col">π<sub>0.5</sub><br>H50E50</th><th scope="col">π<sub>0.5</sub><br>H50E10</th><th scope="col">π<sub>0.5</sub><br>H10E10</th><th scope="col">Async<br>+RTC</th><th scope="col" class="ours">REACT<br>w/o DD</th><th scope="col" class="ours">REACT</th></tr></thead>
+      <tbody>
+        <tr><th scope="row" rowspan="4" class="robot">ARX X5</th><td class="task">Bowl Stacking by Size</td><td>73</td><td>66</td><td>70</td><td>36</td><td class="ours"><b>86</b></td><td class="ours"><u>76</u></td></tr>
+        <tr><td class="task">Bottle Cap Unscrewing</td><td>36</td><td>0</td><td>0</td><td>0</td><td class="ours"><b>56</b></td><td class="ours"><u>47</u></td></tr>
+        <tr><td class="task">Cable Hanging</td><td>56</td><td><u>66</u></td><td>56</td><td>3</td><td class="ours">63</td><td class="ours"><b>80</b></td></tr>
+        <tr class="avg"><td class="task"><i>Average</i></td><td>55.0</td><td>44.0</td><td>42.0</td><td>13.0</td><td class="ours"><b>68.3</b></td><td class="ours"><u>67.7</u></td></tr>
+        <tr><th scope="row" rowspan="4" class="robot">Franka</th><td class="task">Bowl Stacking by Size</td><td>60</td><td>50</td><td>0</td><td>47</td><td class="ours"><b>66</b></td><td class="ours"><u>63</u></td></tr>
+        <tr><td class="task">Bottle Cap Unscrewing</td><td>57</td><td>0</td><td>0</td><td>3</td><td class="ours"><u>63</u></td><td class="ours"><b>70</b></td></tr>
+        <tr><td class="task">Keyring Hanging</td><td><b>70</b></td><td>33</td><td>0</td><td>17</td><td class="ours"><u>60</u></td><td class="ours">53</td></tr>
+        <tr class="avg"><td class="task"><i>Average</i></td><td><u>62.3</u></td><td>27.8</td><td>0.0</td><td>22.3</td><td class="ours"><b>63.0</b></td><td class="ours">62.0</td></tr>
+        <tr class="total"><th scope="row" colspan="2">Overall</th><td>58.7</td><td>35.9</td><td>21.0</td><td>17.7</td><td class="ours"><b>65.7</b></td><td class="ours"><u>64.8</u></td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <figure class="fig">
+      <a href="static/images/smoothness.png" target="_blank" rel="noopener"><img src="static/images/smoothness.png" width="2000" height="570" alt="Mean jerk norm per method in simulation, ARX X5 and Franka." loading="lazy"></a>
+      <figcaption><b>Smoother trajectories.</b> Mean jerk over successful episodes (lower is smoother); Demos (GT) applies the same metric to the demonstrations. REACT reduces jerk relative to Async+RTC on every platform (simulation 1219.0 vs. 2022.2, ARX X5 90.1 vs. 284.1, Franka 28.6 vs. 31.6).</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ Dynamic tasks ============ -->
+<section id="dynamic" class="section">
+  <div class="wrap wide">
+    <h2>Dynamic tasks</h2>
+    <p class="lead">Two specialized tasks isolate the two requirements of dynamic control: reacting to continuously changing physical states, and reacting to sudden visual events.</p>
+
+    <h3 class="sub">Pour Rice <span class="muted">· ARX X5</span></h3>
+    <p>The robot must stop pouring once the rice reaches the target mark. Long open-loop chunks react late and over-pour; REACT's closed-loop refinement stops at the mark far more often (63% vs. 3% for π<sub>0.5</sub> H50E50).</p>
+    <div class="compare two" data-sync-group="rice">
+      <figure class="vcell">
+        <figcaption class="vlabel">π<sub>0.5</sub> baseline</figcaption>
+        <video muted playsinline preload="none" poster="static/videos/pour_rice_baseline.jpg" src="static/videos/pour_rice_baseline.mp4" aria-label="Pour Rice baseline rollout"></video>
+        <p class="verdict">Keeps pouring past the target mark.</p>
+      </figure>
+      <figure class="vcell ours">
+        <figcaption class="vlabel">REACT (ours)</figcaption>
+        <video muted playsinline preload="none" poster="static/videos/pour_rice_react.jpg" src="static/videos/pour_rice_react.mp4" aria-label="Pour Rice REACT rollout"></video>
+        <p class="verdict">Tracks the rising level and stops near the mark.</p>
+      </figure>
+    </div>
+    <div class="sync-bar"><button class="play-all" data-sync-target="rice" type="button"><span aria-hidden="true">▶&nbsp; </span>Play both together</button></div>
+    <figure class="fig">
+      <img src="static/images/pour_rice_overpour.png" width="1860" height="295" alt="Consecutive wrist-camera frames of the baseline continuing to pour after the rice passes the target mark." loading="lazy">
+      <figcaption>Failure of long open-loop chunks: consecutive frames from π<sub>0.5</sub> H50E50, which keeps pouring after the rice level passes the target mark.</figcaption>
+    </figure>
+    <figure class="bars" role="figure" aria-label="Pour Rice success rate">
+      <figcaption class="bars-title">Pour Rice success rate (%)</figcaption>
+      <div class="bar-row"><span>π<sub>0.5</sub> H50E50</span><div class="track"><div class="fill" style="--v:3"></div></div><em>3</em></div>
+      <div class="bar-row"><span>π<sub>0.5</sub> H50E10</span><div class="track"><div class="fill" style="--v:33"></div></div><em>33</em></div>
+      <div class="bar-row"><span>π<sub>0.5</sub> H10E10</span><div class="track"><div class="fill" style="--v:0"></div></div><em>0</em></div>
+      <div class="bar-row"><span>Async+RTC</span><div class="track"><div class="fill" style="--v:0"></div></div><em>0</em></div>
+      <div class="bar-row ours"><span>REACT w/o DD</span><div class="track"><div class="fill" style="--v:57"></div></div><em>57</em></div>
+      <div class="bar-row ours best"><span>REACT</span><div class="track"><div class="fill" style="--v:63"></div></div><em>63</em></div>
+    </figure>
+
+    <h3 class="sub">Reaction Game <span class="muted">· Franka R3</span></h3>
+    <p>The robot must press a key as soon as the on-screen signal turns green, directly measuring visual-to-motor latency. A single timing script drives both the stimulus and the readout; the human reference teleoperates the same arm through the same timing path.</p>
+    <div class="photos">
+      <figure><img src="static/images/reaction_wait.jpg" width="1200" height="900" alt="Screen shows red: wait." loading="lazy"><figcaption>Wait (red)</figcaption></figure>
+      <figure><img src="static/images/reaction_go.jpg" width="1200" height="900" alt="Screen turns green." loading="lazy"><figcaption>Go (green)</figcaption></figure>
+      <figure><img src="static/images/reaction_press.jpg" width="1200" height="900" alt="Robot presses the key; the measured latency is shown on screen." loading="lazy"><figcaption>Press — latency of this single trial shown on screen</figcaption></figure>
+    </div>
+    <figure class="bars latency" role="figure" aria-label="Reaction Game latency">
+      <figcaption class="bars-title">Reaction latency (ms, mean ± std; lower is better)</figcaption>
+      <div class="bar-row"><span>π<sub>0.5</sub> H50E50</span><div class="track"><div class="fill" style="--v:1505"></div></div><em>1505 ± 502</em></div>
+      <div class="bar-row"><span>π<sub>0.5</sub> H50E10</span><div class="track"><div class="fill" style="--v:768"></div></div><em>768 ± 113</em></div>
+      <div class="bar-row"><span>π<sub>0.5</sub> H10E10</span><div class="track"><div class="fill" style="--v:772"></div></div><em>772 ± 119</em></div>
+      <div class="bar-row"><span>Async+RTC</span><div class="track"><div class="fill" style="--v:747"></div></div><em>747 ± 123</em></div>
+      <div class="bar-row ours"><span>REACT w/o DD</span><div class="track"><div class="fill" style="--v:754"></div></div><em>754 ± 127</em></div>
+      <div class="bar-row ours best"><span>REACT</span><div class="track"><div class="fill" style="--v:734"></div></div><em>734 ± 94</em></div>
+      <div class="bar-row human"><span>Human teleop.</span><div class="track"><div class="fill" style="--v:705"></div></div><em>705 ± 73</em></div>
+    </figure>
+    <p class="note">Full REACT has the lowest mean robot latency, 29 ms above human teleoperation of the same arm and about 2× faster than full-chunk π<sub>0.5</sub>.</p>
+  </div>
+</section>
+
+<!-- ============ Training efficiency ============ -->
+<section id="training" class="section alt">
+  <div class="wrap wide">
+    <h2>Training efficiency</h2>
+    <p class="lead">Staircase training supervises the noise levels used at inference, and REACT also learns faster: on Click Bell, Move Playing Card Away and Press Stapler it reaches 52.7% average success after 3k steps (π<sub>0.5</sub>: 25.0%) and matches π<sub>0.5</sub>'s 30k-step performance with only 15k steps. On the out-of-distribution <code>demo_randomized</code> data, average open-loop MSE drops from 0.272 to 0.048.</p>
+    <div class="figs train">
+      <figure class="fig"><a href="static/images/training_loss.png" target="_blank" rel="noopener"><img src="static/images/training_loss.png" width="1800" height="574" alt="Training loss over optimization steps for three tasks." loading="lazy"></a><figcaption>Training loss</figcaption></figure>
+      <figure class="fig"><a href="static/images/success_vs_steps.png" target="_blank" rel="noopener"><img src="static/images/success_vs_steps.png" width="1300" height="969" alt="Average success rate as a function of training steps." loading="lazy"></a><figcaption>Success vs. training steps</figcaption></figure>
+      <figure class="fig"><a href="static/images/openloop_mse.png" target="_blank" rel="noopener"><img src="static/images/openloop_mse.png" width="1300" height="756" alt="Open-loop MSE on out-of-distribution data; Ours denotes REACT." loading="lazy"></a><figcaption>OOD open-loop MSE ("Ours" = REACT)</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BibTeX ============ -->
+<section id="bibtex" class="section">
+  <div class="wrap">
+    <h2>BibTeX</h2>
+    <div class="bib">
+      <button class="ghost copy" type="button" data-copy="bibtex-code">Copy</button>
+      <span class="visually-hidden" role="status" aria-live="polite" id="copy-status"></span>
+<pre id="bibtex-code"><code>@inproceedings{xiong2026react,
+  title     = {{REACT}: Rolling Denoising and Dual Decoupling for Reactive Robot Control with {VLA} Models},
+  author    = {Xiong, Houlong and Qiu, Zhenqi and Wang, Zechen and Zhang, Suohang and Ren, Yiyu and Xu, Wanting and Niu, Hongfei and He, Chengyang and Sun, Ge and Cheng, Ran and Zhu, Qian},
+  booktitle = {Proceedings of the 10th Conference on Robot Learning},
+  series    = {Proceedings of Machine Learning Research},
+  year      = {2026}
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p>© 2026 the REACT authors. Page content licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</p>
+  </div>
+</footer>
+
+<script src="static/js/main.js"></script>
+</body>
+</html>
