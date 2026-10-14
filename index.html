@@ -38,6 +38,8 @@
 
   <link rel="icon" href="static/images/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="static/images/apple-touch-icon.png">
+  <link rel="preload" href="static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="static/vendor/katex/katex.min.css">
   <link rel="stylesheet" href="static/css/style.css">
 </head>
 <body>
@@ -95,12 +97,12 @@
     <h2 class="kicker">The target bowl is moved mid-grasp</h2>
     <div class="compare" data-sync-group="teaser">
       <figure class="vcell">
-        <figcaption class="vlabel">π<sub>0.5</sub> · standard horizon</figcaption>
+        <figcaption class="vlabel"><span class="pi">π<sub>0.5</sub></span><span class="sep">·</span>standard horizon</figcaption>
         <video muted playsinline preload="metadata" poster="static/videos/teaser_standard.jpg" src="static/videos/teaser_standard.mp4" aria-label="Standard-horizon baseline rollout"></video>
         <p class="verdict">Keeps executing a stale chunk after the bowl moves.</p>
       </figure>
       <figure class="vcell">
-        <figcaption class="vlabel">π<sub>0.5</sub> · short execution horizon</figcaption>
+        <figcaption class="vlabel"><span class="pi">π<sub>0.5</sub></span><span class="sep">·</span>short execution horizon</figcaption>
         <video muted playsinline preload="metadata" poster="static/videos/teaser_short.jpg" src="static/videos/teaser_short.mp4" aria-label="Short-horizon baseline rollout"></video>
         <p class="verdict">Replans often, but moves in a fragmented stop-and-replan pattern.</p>
       </figure>
@@ -113,8 +115,8 @@
     <div class="sync-bar"><button class="play-all" data-sync-target="teaser" type="button"><span aria-hidden="true">▶&nbsp; </span>Play all together</button></div>
 
     <div class="stats">
-      <div class="stat"><b>64.8%</b><span>real-world success<br>best π<sub>0.5</sub> baseline 58.7%, Async+RTC 17.7%</span></div>
-      <div class="stat"><b>~2×</b><span>faster reaction than full-chunk π<sub>0.5</sub><br>734 ms vs. 1505 ms (human teleop. 705 ms)</span></div>
+      <div class="stat"><b>64.8%</b><span>real-world success<br>best <span class="pi">π<sub>0.5</sub></span> baseline 58.7%, Async+RTC 17.7%</span></div>
+      <div class="stat"><b>~2×</b><span>faster reaction than full-chunk <span class="pi">π<sub>0.5</sub></span><br>734 ms vs. 1505 ms (human teleop. 705 ms)</span></div>
       <div class="stat"><b>63%</b><span>Pour Rice success<br>vs. ≤33% for every baseline</span></div>
       <div class="stat"><b>Smoother</b><span>than Async+RTC on all 3 platforms<br>&gt;3× lower jerk on ARX X5</span></div>
     </div>
@@ -131,37 +133,97 @@
   </div>
 </section>
 
-<!-- ============ Motivation ============ -->
-<section class="section alt">
+<!-- ============ Background ============ -->
+<section id="background" class="section alt">
   <div class="wrap wide">
-    <h2>The coherence–freshness trade-off</h2>
-    <p class="lead">A closed-loop VLA must both incorporate fresh observations often (<em>input throughput</em>) and keep producing executable actions (<em>output throughput</em>). Faster inference and shorter chunks each address only part of this.</p>
-    <div class="cards two">
-      <article class="card">
-        <h3>Faster inference is not enough</h3>
-        <p>Executing a 50-action chunk dominates the control cycle, so even 2× faster inference only lifts fresh-observation throughput from 0.58 Hz to 0.59 Hz.</p>
-        <table class="tbl compact">
-          <thead><tr><th scope="col">Scheme</th><th scope="col">Φ<sub>in</sub> (Hz)</th><th scope="col">Φ<sub>out</sub> (Hz)</th></tr></thead>
-          <tbody>
-            <tr><td>Synchronous, H<sub>e</sub>=50</td><td>0.58</td><td>28.8</td></tr>
-            <tr><td>Sync + 2× acceleration, H<sub>e</sub>=50</td><td>0.59</td><td>29.4</td></tr>
-            <tr><td>Synchronous, H<sub>e</sub>=10</td><td>2.50</td><td>25.0</td></tr>
-            <tr><td>Asynchronous, H<sub>e</sub>=10</td><td>3.00</td><td>30.0</td></tr>
-            <tr class="ours"><td>REACT (S=10)</td><td>3.00</td><td>30.0</td></tr>
-          </tbody>
-        </table>
-        <p class="note">REACT matches asynchronous throughput while keeping the full 50-action rolling buffer instead of independent 10-action chunks. Analytical estimate for π<sub>0.5</sub> on one RTX 4090 (T<sub>VLM</sub>=37 ms, T<sub>DiT</sub>=3 ms, 10 denoising steps, 30 Hz camera and control).</p>
-      </article>
-      <article class="card">
-        <h3>Shorter chunks break action coherence</h3>
-        <p>Replanning every few actions refreshes observations, but every chunk boundary is a chance to switch to a different action mode. Asynchronous execution hides latency, yet still stitches chunks predicted from observations that no longer match the scene.</p>
-        <ul class="fail-list">
-          <li><b>Long chunks go stale.</b> π<sub>0.5</sub> H50E50 keeps pouring after the rice passes the mark: 3% success on Pour Rice.</li>
-          <li><b>Short chunks retry and switch modes.</b> π<sub>0.5</sub> H50E10 keeps returning to the cap instead of twisting it: 0% on Bottle Cap Unscrewing on both robots.</li>
-          <li><b>Async chunks are stitched.</b> Async+RTC has the highest simulation jerk of all methods (2022.2) and only 17.7% real-world success.</li>
-        </ul>
-      </article>
+    <h2>Why chunked VLAs react slowly</h2>
+    <p class="lead">Action chunking made flow-based VLAs smooth and reliable, but it also decides <em>how often</em> the policy can look at the world. We make that rate explicit and show why neither faster inference nor shorter chunks fixes it.</p>
+
+    <div class="bg-step">
+      <div class="bg-text">
+        <p class="step-no">1</p>
+        <h3>Action chunking: coherent, but open-loop inside a chunk</h3>
+        <p>Predicting a chunk of <span class="nowrap">\(H\)</span> future actions from one observation improves temporal consistency, reduces compounding errors and keeps a multimodal policy committed to a single coherent motion mode.</p>
+        <p>The price is that the robot executes the first \(H_e\) actions of the chunk <b>open-loop</b>. If the goal moves while the chunk is running, the rest of the chunk was planned for a scene that no longer exists, and the robot keeps executing these stale-context actions until the next chunk is predicted.</p>
+      </div>
+      <figure class="bg-vis diagram">
+        <img src="static/images/diagrams/chunk_openloop.svg" width="560" height="190" alt="Timeline of one action chunk: actions after a mid-chunk goal change are stale but still executed." loading="lazy">
+      </figure>
     </div>
+
+    <div class="bg-step">
+      <div class="bg-text">
+        <p class="step-no">2</p>
+        <h3>Reactivity is input throughput, not control frequency</h3>
+        <p>We separate two rates. <b>Input throughput</b> \(\Phi_{\text{in}}\) is how often a <em>fresh</em> observation actually enters action generation; <b>output throughput</b> \(\Phi_{\text{out}}\) is how many executable actions are produced per second:</p>
+        <div class="eq">\[\Phi_{\text{in}} = \frac{1}{T_{\text{cycle}}}, \qquad \Phi_{\text{out}} = \frac{H_e}{T_{\text{cycle}}},\]</div>
+        <p>where \(T_{\text{cycle}}\) is the interval between two inference cycles that consume the latest observation.</p>
+        <p class="callout">The control frequency only tells you how often commands are <em>sent</em>. A synchronous \(\pi_{0.5}\) with \(H_e{=}50\) streams actions at <b>28.8 Hz</b>, yet it looks at the scene only <b>0.58 times per second</b>. Reaction to a sudden change is bounded by \(\Phi_{\text{in}}\), which is why we use it as the measure of reactivity.</p>
+      </div>
+      <div class="bg-vis">
+        <p class="tbl-caption top">Analytical throughput for \(\pi_{0.5}\) on one RTX 4090 (\(H{=}50\), \(T_{\text{VLM}}{=}37\) ms, \(T_{\text{DiT}}{=}3\) ms, \(N{=}10\), 30 Hz camera and control).</p>
+        <div class="table-scroll">
+          <table class="tbl compact thr">
+            <thead><tr><th scope="col">Scheme</th><th scope="col">\(H_e\) / \(S\)</th><th scope="col">\(T_{\text{cycle}}\) (ms)</th><th scope="col">\(\Phi_{\text{in}}\) (Hz)</th><th scope="col">\(\Phi_{\text{out}}\) (Hz)</th></tr></thead>
+            <tbody>
+              <tr class="hl-a"><td>Synchronous</td><td>50</td><td>1734</td><td>0.58</td><td>28.8</td></tr>
+              <tr><td>Synchronous</td><td>25</td><td>900</td><td>1.11</td><td>27.8</td></tr>
+              <tr><td>Synchronous</td><td>10</td><td>400</td><td>2.50</td><td>25.0</td></tr>
+              <tr class="hl-b"><td>Synchronous</td><td>5</td><td>234</td><td>4.28</td><td>21.4</td></tr>
+              <tr class="group hl-a"><td>Sync + 2× accel.</td><td>50</td><td>1700</td><td>0.59</td><td>29.4</td></tr>
+              <tr><td>Sync + 2× accel.</td><td>10</td><td>367</td><td>2.73</td><td>27.3</td></tr>
+              <tr class="group hl-a"><td>Asynchronous</td><td>50</td><td>1667</td><td>0.60</td><td>30.0</td></tr>
+              <tr><td>Asynchronous</td><td>10</td><td>333</td><td>3.00</td><td>30.0</td></tr>
+              <tr><td>Asynchronous</td><td>5</td><td>167</td><td>6.00</td><td>30.0</td></tr>
+              <tr class="group ours"><td>REACT (main)</td><td>\(S{=}10\)</td><td>–</td><td>3.0</td><td>30.0</td></tr>
+              <tr class="ours"><td>REACT (faster input)</td><td>\(S{=}5\)</td><td>–</td><td>6.0</td><td>30.0</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note"><span class="key key-a"></span>long chunks: acceleration and asynchrony barely move \(\Phi_{\text{in}}\) &nbsp; <span class="key key-b"></span>short chunks: \(\Phi_{\text{in}}\) rises, \(\Phi_{\text{out}}\) falls. Full table (incl. \(H_e{=}25\)) in Appendix B of the paper.</p>
+      </div>
+    </div>
+
+    <div class="bg-step">
+      <div class="bg-text">
+        <p class="step-no">3</p>
+        <h3>Faster or asynchronous inference is not enough</h3>
+        <p>Executing the chunk, not computing it, dominates the cycle:</p>
+        <div class="eq">\[T^{\text{sync}}_{\text{cycle}} = T_{\text{infer}} + \frac{H_e}{f_{\text{ctrl}}}, \qquad T^{\text{async}}_{\text{cycle}} = \max\!\Big(T_{\text{infer}},\ \frac{H_e}{f_{\text{ctrl}}}\Big).\]</div>
+        <p>Halving inference time therefore lifts \(\Phi_{\text{in}}\) only from 0.58 to 0.59 Hz. Asynchronous inference hides latency, but still consumes one observation per chunk (0.60 Hz). Async+RTC also stitches chunks predicted from different observations: it has the highest simulation jerk of all methods (2022.2) and only 17.7% real-world success.</p>
+      </div>
+      <figure class="bg-vis cycle-fig" aria-label="Breakdown of the control cycle for long chunks">
+        <figcaption class="cycle-title">Where one control cycle goes (\(H_e{=}50\))</figcaption>
+        <div class="cyc-row"><span class="cyc-name">Synchronous</span><div class="cyc-bar"><i class="inf" style="--w:67"></i><i class="exe" style="--w:1667"></i></div><span class="cyc-val">1734 ms · <b>0.58 Hz</b></span></div>
+        <div class="cyc-row"><span class="cyc-name">Sync + 2× accel.</span><div class="cyc-bar"><i class="inf" style="--w:33"></i><i class="exe" style="--w:1667"></i></div><span class="cyc-val">1700 ms · <b>0.59 Hz</b></span></div>
+        <div class="cyc-row"><span class="cyc-name">Asynchronous</span><div class="cyc-bar"><i class="exe" style="--w:1667"><i class="inf hidden" style="--w:67"></i></i></div><span class="cyc-val">1667 ms · <b>0.60 Hz</b></span></div>
+        <div class="cyc-legend"><span><i class="sw inf"></i>inference \(T_{\text{infer}}\) (67 ms)</span><span><i class="sw exe"></i>chunk execution \(H_e/f_{\text{ctrl}}\) (1667 ms)</span></div>
+        <p class="note">Asynchronous inference overlaps inference with execution, so only the execution time remains, and it is the part that matters.</p>
+      </figure>
+    </div>
+
+    <div class="bg-step full">
+      <div class="bg-text narrow">
+        <p class="step-no">4</p>
+        <h3>Shorter execution horizons trade coherence for freshness</h3>
+        <p>The naive fix is to replan more often. Going from \(H_e{=}50\) to \(H_e{=}5\) raises \(\Phi_{\text{in}}\) from 0.58 to 4.28 Hz, but it introduces two failure modes:</p>
+      </div>
+      <div class="cards two fail-cards">
+        <article class="card">
+          <figure class="diagram"><img src="static/images/diagrams/mode_switch.svg" width="460" height="250" alt="Consecutive short chunks are each smooth but disagree at their boundaries, so the executed trajectory jumps." loading="lazy"></figure>
+          <h4>More chunk boundaries, more discontinuities</h4>
+          <p>Each new chunk is sampled independently from a multimodal policy, so consecutive chunks need not agree where they meet. Every replanning step adds a boundary where the trajectory can jump or switch to a different motion mode; the more often the policy replans, the more of these inconsistent transitions the robot executes.</p>
+        </article>
+        <article class="card">
+          <figure class="diagram"><a href="static/images/retry_illustration.jpg" target="_blank" rel="noopener"><img src="static/images/retry_illustration.jpg" width="1114" height="900" alt="Illustration: a short-horizon policy repeatedly re-approaches the bottle cap because the observation barely changes." loading="lazy"></a></figure>
+          <h4>Stopping before a state change completes</h4>
+          <p>A short chunk can end before the scene actually changes. The next observation looks almost the same, so the policy re-enters the same approach or gets trapped in out-of-distribution contact states: \(\pi_{0.5}\) H50E10 scores <b>0%</b> on Bottle Cap Unscrewing on both robots.</p>
+          <p class="note">Schematic illustration, not recorded frames.</p>
+        </article>
+      </div>
+    </div>
+
+    <p class="takeaway">REACT is built to get both: the observation freshness of short chunks and the long-horizon coherence of full chunks.</p>
   </div>
 </section>
 
@@ -184,8 +246,11 @@
     <div class="method-row">
       <div class="method-text">
         <h3>1 · Rolling denoising</h3>
-        <p>REACT keeps a persistent buffer of <i>H</i> = <i>K</i>·<i>S</i> = 50 actions split into <i>K</i> = 5 blocks of <i>S</i> = 10, with staircase flow times τ<sub>j</sub> = (⌊<i>j</i>/<i>S</i>⌋ + 1)/<i>K</i>: the front block is nearly clean, the tail is pure noise.</p>
-        <p>Each control update applies <b>one</b> DiT Euler step to the whole buffer under the latest observation, executes the now-clean front block, shifts the remaining blocks forward, and appends fresh noise. Every executed block has therefore been refined across multiple recent observations — while the policy still reasons over the full 50-action horizon.</p>
+        <p>REACT keeps a persistent buffer of \(H = KS\) actions, split into \(K\) blocks of length \(S\) (\(K{=}5\), \(S{=}10\), \(H{=}50\)). Instead of one flow time for the whole horizon, every position gets a staircase time, so the front block is nearly clean and the tail is pure noise:</p>
+        <div class="eq">\[\tau_j = \frac{\lfloor j/S \rfloor + 1}{K}, \qquad j = 0,\dots,H-1.\]</div>
+        <p>Each control update runs <b>one</b> DiT pass under the newest observation \(\mathbf{o}_i\) and advances every block by one stage, then executes the clean front block, shifts, and appends fresh noise:</p>
+        <div class="eq">\[\widetilde{\mathbf{x}}^{(i)} = \mathbf{x}^{(i)} - \tfrac{1}{K}\, v_\theta\big(\mathbf{x}^{(i)}, \boldsymbol{\tau}, \mathbf{o}_i\big), \qquad \mathbf{x}^{(i+1)} = \big[\widetilde{B}_1, \dots, \widetilde{B}_{K-1}, \boldsymbol{\epsilon}_{\text{new}}\big].\]</div>
+        <p>Every executed block has been refined under \(K\) consecutive observations, while adjacent blocks are always denoised together in one 50-action context, which keeps them in the same motion mode.</p>
       </div>
       <div class="method-vis">
         <figure class="roll" id="roll" aria-label="Animation of the rolling action buffer">
@@ -203,10 +268,19 @@
     </div>
 
     <div class="method-row stack">
-      <div class="method-text">
-        <h3>2 · Dual Decoupling</h3>
-        <p>A serialized implementation would wait for VLM encoding, DiT denoising and execution before using the next observation. Dual Decoupling is an inference-time scheduler that leaves the weights unchanged: sensing selects one frame every <i>S</i> camera periods, a pool of <i>M</i> VLM workers encodes frames into a latest-ready cache, and each DiT update consumes the freshest embedding together with the rolling buffer.</p>
-        <p>With <i>S</i> = 10 and <i>M</i> = 2 workers on one RTX 4090, REACT consumes observations at 3 Hz and streams actions at 30 Hz. The embedding is on average 233 ms old (p95 383 ms, max 416 ms) against a 333 ms observation period, so conditioning is never more than one selected observation behind.</p>
+      <div class="dd-grid single">
+        <div class="method-text">
+          <h3>2 · Dual Decoupling</h3>
+          <p>Run serially, rolling denoising would still wait for VLM encoding, DiT denoising and execution before using the next observation. Dual Decoupling is an inference-time scheduler that splits the loop into independent streams and leaves the model weights unchanged:</p>
+          <ul class="streams">
+            <li><b>Sensing</b> selects one camera frame every \(S\) periods, without waiting for execution.</li>
+            <li><b>VLM pool</b>: \(M\) workers encode selected frames into a latest-ready embedding cache.</li>
+            <li><b>DiT</b> consumes the freshest embedding with the rolling buffer and commits the next \(S\) actions.</li>
+          </ul>
+          <p>As long as the worker pool keeps up with the selected stream,</p>
+          <div class="eq">\[\Phi^{\text{REACT}}_{\text{in}} = \min\!\Big(\frac{f_{\text{cam}}}{S},\ \frac{1}{T_{\text{DiT}}}\Big), \qquad \Phi^{\text{REACT}}_{\text{out}} = \min\!\Big(f_{\text{cam}},\ \frac{S}{T_{\text{DiT}}}\Big).\]</div>
+          <p>With \(S{=}10\) and \(M{=}2\) workers on one RTX 4090, REACT consumes observations at 3 Hz and streams actions at 30 Hz. The embedding is on average 233 ms old (p95 383 ms, max 416 ms) against a 333 ms observation period, so conditioning is never more than one selected observation behind.</p>
+        </div>
       </div>
       <div class="method-vis">
         <figure class="fig plain">
@@ -215,31 +289,41 @@
       </div>
     </div>
 
-    <div class="method-row">
-      <div class="method-text">
-        <h3>3 · Staircase training</h3>
-        <p>Standard flow matching samples a single random timestep for the whole chunk. REACT instead trains the action expert on the same per-block noise levels {1/<i>K</i>, 2/<i>K</i>, …, 1} that rolling inference queries, supervising all <i>K</i> denoising stages in one forward pass.</p>
-        <p>Training therefore matches deployment, and each demonstration covers every stage the scheduler needs; empirically this also speeds up training (see <a href="#training">below</a>).</p>
-      </div>
-      <div class="method-vis">
-        <figure class="stair-fig" aria-label="Staircase flow times across the five action blocks">
-          <div class="stair">
-            <div class="stair-y" aria-hidden="true"><span>noise level τ</span></div>
-            <div class="stair-col"><div class="bar" style="--n:.2"></div><span>B<sub>0</sub><br>τ=0.2</span></div>
-            <div class="stair-col"><div class="bar" style="--n:.4"></div><span>B<sub>1</sub><br>τ=0.4</span></div>
-            <div class="stair-col"><div class="bar" style="--n:.6"></div><span>B<sub>2</sub><br>τ=0.6</span></div>
-            <div class="stair-col"><div class="bar" style="--n:.8"></div><span>B<sub>3</sub><br>τ=0.8</span></div>
-            <div class="stair-col"><div class="bar" style="--n:1"></div><span>B<sub>4</sub><br>τ=1.0</span></div>
-          </div>
-          <figcaption class="note center">Training samples exactly these per-block noise levels — the same ones rolling inference sees (<i>K</i> = 5).</figcaption>
-        </figure>
-      </div>
+  </div>
+</section>
+
+<!-- ============ Training ============ -->
+<section id="training" class="section">
+  <div class="wrap wide">
+    <h2>Training: staircase flow matching</h2>
+    <p class="lead">Rolling inference queries the action expert at a fixed set of per-block noise levels. REACT trains on exactly those levels, which also turns out to make training faster.</p>
+
+    <div class="cards two train-cmp">
+      <article class="card">
+        <h3>Standard flow matching</h3>
+        <p>One continuous timestep is sampled per training chunk and shared by all \(H\) actions (for \(\pi_{0.5}\), \(\tau \sim \mathrm{Beta}(1.5, 1)\)). Covering the whole path from noise to clean actions takes many samples, and the model is never trained on the mixed noise levels that rolling inference uses.</p>
+        <figure class="diagram"><img src="static/images/diagrams/standard_fm.svg" width="370" height="260" alt="Standard flow matching: one shared timestep for all actions, drawn from a continuous distribution." loading="lazy"></figure>
+      </article>
+      <article class="card ours-card">
+        <h3>Staircase training (REACT)</h3>
+        <p>Each block \(B_k\) is noised to its fixed level \(\tau = (k{+}1)/K\), \(\mathbf{x}_{\tau_j} = \tau_j\boldsymbol{\epsilon} + (1-\tau_j)\mathbf{a}\), and one forward pass supervises all \(K\) denoising stages:</p>
+        <div class="eq">\[\mathcal{L}_{\text{REACT}} = \frac{1}{K}\sum_{k=0}^{K-1} \frac{1}{SD}\sum_{j\in B_k} \big\| v_\theta^{(j)} - u^{(j)}_{\tau_j} \big\|^2 .\]</div>
+        <figure class="diagram"><img src="static/images/diagrams/staircase.svg" width="370" height="190" alt="Staircase training: block k is noised to tau=(k+1)/K, the same discrete levels used by rolling inference." loading="lazy"></figure>
+      </article>
+    </div>
+
+    <h3 class="sub center">Training efficiency</h3>
+    <p class="lead">On Click Bell, Move Playing Card Away and Press Stapler, REACT reaches 52.7% average success after 3k steps (\(\pi_{0.5}\): 25.0%) and matches \(\pi_{0.5}\)'s 30k-step performance with only 15k steps. On the out-of-distribution <code>demo_randomized</code> data, average open-loop MSE drops from 0.272 to 0.048.</p>
+    <div class="figs train">
+      <figure class="fig"><a href="static/images/training_loss.png" target="_blank" rel="noopener"><img src="static/images/training_loss.png" width="1800" height="574" alt="Training loss over optimization steps for three tasks." loading="lazy"></a><figcaption><b>Faster convergence.</b> Training loss on three RoboTwin tasks.</figcaption></figure>
+      <figure class="fig"><a href="static/images/success_vs_steps.png" target="_blank" rel="noopener"><img src="static/images/success_vs_steps.png" width="1300" height="969" alt="Average success rate as a function of training steps." loading="lazy"></a><figcaption><b>Higher training efficiency.</b> Average success vs. training steps.</figcaption></figure>
+      <figure class="fig"><a href="static/images/openloop_mse.png" target="_blank" rel="noopener"><img src="static/images/openloop_mse.png" width="1300" height="756" alt="Open-loop MSE on out-of-distribution data; Ours denotes REACT." loading="lazy"></a><figcaption><b>Lower open-loop prediction error</b> on OOD data ("Ours" = REACT).</figcaption></figure>
     </div>
   </div>
 </section>
 
 <!-- ============ Simulation ============ -->
-<section id="simulation" class="section">
+<section id="simulation" class="section alt">
   <div class="wrap wide">
     <h2>Simulation: RoboTwin 2.0</h2>
     <p class="lead">Seven bimanual tasks, 50 demonstrations per task, 100 evaluation rollouts per task under Clean and Randomized conditions.</p>
@@ -253,7 +337,7 @@
     <p class="tbl-caption">Average success rate (%) over the seven tasks. Best in bold, second best underlined.</p>
     <div class="table-scroll">
     <table class="tbl results">
-      <thead><tr><th scope="col">Setting</th><th scope="col">π<sub>0.5</sub><br>H50E50</th><th scope="col">π<sub>0.5</sub><br>H50E10</th><th scope="col">π<sub>0.5</sub><br>H10E10</th><th scope="col">Async<br>+RTC</th><th scope="col" class="ours">REACT<br>w/o DD</th><th scope="col" class="ours">REACT</th></tr></thead>
+      <thead><tr><th scope="col">Setting</th><th scope="col"><span class="pi">π<sub>0.5</sub></span><br>H50E50</th><th scope="col"><span class="pi">π<sub>0.5</sub></span><br>H50E10</th><th scope="col"><span class="pi">π<sub>0.5</sub></span><br>H10E10</th><th scope="col">Async<br>+RTC</th><th scope="col" class="ours">REACT<br>w/o DD</th><th scope="col" class="ours">REACT</th></tr></thead>
       <tbody>
         <tr><th scope="row">Clean</th><td>37.43</td><td>33.71</td><td>10.86</td><td>33.29</td><td class="ours"><b>49.71</b></td><td class="ours"><u>44.86</u></td></tr>
         <tr><th scope="row">Randomized</th><td>11.43</td><td>8.71</td><td>2.43</td><td>10.57</td><td class="ours"><b>20.86</b></td><td class="ours"><u>19.86</u></td></tr>
@@ -264,7 +348,7 @@
 </section>
 
 <!-- ============ Real world ============ -->
-<section id="real" class="section alt">
+<section id="real" class="section">
   <div class="wrap wide">
     <h2>Real world: ARX X5 and Franka Research 3</h2>
     <p class="lead">Two bimanual platforms, six platform–task pairs spanning size-based reasoning, bimanual coordination and deformable or articulated objects; 30 trials per task with matched randomized placements.</p>
@@ -284,7 +368,7 @@
     <p class="tbl-caption">Real-world success rate (%). Best in bold, second best underlined.</p>
     <div class="table-scroll">
     <table class="tbl results real-tbl">
-      <thead><tr><th scope="col">Robot</th><th scope="col">Task</th><th scope="col">π<sub>0.5</sub><br>H50E50</th><th scope="col">π<sub>0.5</sub><br>H50E10</th><th scope="col">π<sub>0.5</sub><br>H10E10</th><th scope="col">Async<br>+RTC</th><th scope="col" class="ours">REACT<br>w/o DD</th><th scope="col" class="ours">REACT</th></tr></thead>
+      <thead><tr><th scope="col">Robot</th><th scope="col">Task</th><th scope="col"><span class="pi">π<sub>0.5</sub></span><br>H50E50</th><th scope="col"><span class="pi">π<sub>0.5</sub></span><br>H50E10</th><th scope="col"><span class="pi">π<sub>0.5</sub></span><br>H10E10</th><th scope="col">Async<br>+RTC</th><th scope="col" class="ours">REACT<br>w/o DD</th><th scope="col" class="ours">REACT</th></tr></thead>
       <tbody>
         <tr><th scope="row" rowspan="4" class="robot">ARX X5</th><td class="task">Bowl Stacking by Size</td><td>73</td><td>66</td><td>70</td><td>36</td><td class="ours"><b>86</b></td><td class="ours"><u>76</u></td></tr>
         <tr><td class="task">Bottle Cap Unscrewing</td><td>36</td><td>0</td><td>0</td><td>0</td><td class="ours"><b>56</b></td><td class="ours"><u>47</u></td></tr>
@@ -307,16 +391,16 @@
 </section>
 
 <!-- ============ Dynamic tasks ============ -->
-<section id="dynamic" class="section">
+<section id="dynamic" class="section alt">
   <div class="wrap wide">
     <h2>Dynamic tasks</h2>
     <p class="lead">Two specialized tasks isolate the two requirements of dynamic control: reacting to continuously changing physical states, and reacting to sudden visual events.</p>
 
     <h3 class="sub">Pour Rice <span class="muted">· ARX X5</span></h3>
-    <p>The robot must stop pouring once the rice reaches the target mark. Long open-loop chunks react late and over-pour; REACT's closed-loop refinement stops at the mark far more often (63% vs. 3% for π<sub>0.5</sub> H50E50).</p>
+    <p>The robot must stop pouring once the rice reaches the target mark. Long open-loop chunks react late and over-pour; REACT's closed-loop refinement stops at the mark far more often (63% vs. 3% for <span class="pi">π<sub>0.5</sub></span> H50E50).</p>
     <div class="compare two" data-sync-group="rice">
       <figure class="vcell">
-        <figcaption class="vlabel">π<sub>0.5</sub> baseline</figcaption>
+        <figcaption class="vlabel"><span class="pi">π<sub>0.5</sub></span> baseline</figcaption>
         <video muted playsinline preload="none" poster="static/videos/pour_rice_baseline.jpg" src="static/videos/pour_rice_baseline.mp4" aria-label="Pour Rice baseline rollout"></video>
         <p class="verdict">Keeps pouring past the target mark.</p>
       </figure>
@@ -329,13 +413,13 @@
     <div class="sync-bar"><button class="play-all" data-sync-target="rice" type="button"><span aria-hidden="true">▶&nbsp; </span>Play both together</button></div>
     <figure class="fig">
       <img src="static/images/pour_rice_overpour.png" width="1860" height="295" alt="Consecutive wrist-camera frames of the baseline continuing to pour after the rice passes the target mark." loading="lazy">
-      <figcaption>Failure of long open-loop chunks: consecutive frames from π<sub>0.5</sub> H50E50, which keeps pouring after the rice level passes the target mark.</figcaption>
+      <figcaption>Failure of long open-loop chunks: consecutive frames from <span class="pi">π<sub>0.5</sub></span> H50E50, which keeps pouring after the rice level passes the target mark.</figcaption>
     </figure>
     <figure class="bars" role="figure" aria-label="Pour Rice success rate">
       <figcaption class="bars-title">Pour Rice success rate (%)</figcaption>
-      <div class="bar-row"><span>π<sub>0.5</sub> H50E50</span><div class="track"><div class="fill" style="--v:3"></div></div><em>3</em></div>
-      <div class="bar-row"><span>π<sub>0.5</sub> H50E10</span><div class="track"><div class="fill" style="--v:33"></div></div><em>33</em></div>
-      <div class="bar-row"><span>π<sub>0.5</sub> H10E10</span><div class="track"><div class="fill" style="--v:0"></div></div><em>0</em></div>
+      <div class="bar-row"><span><span class="pi">π<sub>0.5</sub></span> H50E50</span><div class="track"><div class="fill" style="--v:3"></div></div><em>3</em></div>
+      <div class="bar-row"><span><span class="pi">π<sub>0.5</sub></span> H50E10</span><div class="track"><div class="fill" style="--v:33"></div></div><em>33</em></div>
+      <div class="bar-row"><span><span class="pi">π<sub>0.5</sub></span> H10E10</span><div class="track"><div class="fill" style="--v:0"></div></div><em>0</em></div>
       <div class="bar-row"><span>Async+RTC</span><div class="track"><div class="fill" style="--v:0"></div></div><em>0</em></div>
       <div class="bar-row ours"><span>REACT w/o DD</span><div class="track"><div class="fill" style="--v:57"></div></div><em>57</em></div>
       <div class="bar-row ours best"><span>REACT</span><div class="track"><div class="fill" style="--v:63"></div></div><em>63</em></div>
@@ -350,28 +434,15 @@
     </div>
     <figure class="bars latency" role="figure" aria-label="Reaction Game latency">
       <figcaption class="bars-title">Reaction latency (ms, mean ± std; lower is better)</figcaption>
-      <div class="bar-row"><span>π<sub>0.5</sub> H50E50</span><div class="track"><div class="fill" style="--v:1505"></div></div><em>1505 ± 502</em></div>
-      <div class="bar-row"><span>π<sub>0.5</sub> H50E10</span><div class="track"><div class="fill" style="--v:768"></div></div><em>768 ± 113</em></div>
-      <div class="bar-row"><span>π<sub>0.5</sub> H10E10</span><div class="track"><div class="fill" style="--v:772"></div></div><em>772 ± 119</em></div>
+      <div class="bar-row"><span><span class="pi">π<sub>0.5</sub></span> H50E50</span><div class="track"><div class="fill" style="--v:1505"></div></div><em>1505 ± 502</em></div>
+      <div class="bar-row"><span><span class="pi">π<sub>0.5</sub></span> H50E10</span><div class="track"><div class="fill" style="--v:768"></div></div><em>768 ± 113</em></div>
+      <div class="bar-row"><span><span class="pi">π<sub>0.5</sub></span> H10E10</span><div class="track"><div class="fill" style="--v:772"></div></div><em>772 ± 119</em></div>
       <div class="bar-row"><span>Async+RTC</span><div class="track"><div class="fill" style="--v:747"></div></div><em>747 ± 123</em></div>
       <div class="bar-row ours"><span>REACT w/o DD</span><div class="track"><div class="fill" style="--v:754"></div></div><em>754 ± 127</em></div>
       <div class="bar-row ours best"><span>REACT</span><div class="track"><div class="fill" style="--v:734"></div></div><em>734 ± 94</em></div>
       <div class="bar-row human"><span>Human teleop.</span><div class="track"><div class="fill" style="--v:705"></div></div><em>705 ± 73</em></div>
     </figure>
-    <p class="note">Full REACT has the lowest mean robot latency, 29 ms above human teleoperation of the same arm and about 2× faster than full-chunk π<sub>0.5</sub>.</p>
-  </div>
-</section>
-
-<!-- ============ Training efficiency ============ -->
-<section id="training" class="section alt">
-  <div class="wrap wide">
-    <h2>Training efficiency</h2>
-    <p class="lead">Staircase training supervises the noise levels used at inference, and REACT also learns faster: on Click Bell, Move Playing Card Away and Press Stapler it reaches 52.7% average success after 3k steps (π<sub>0.5</sub>: 25.0%) and matches π<sub>0.5</sub>'s 30k-step performance with only 15k steps. On the out-of-distribution <code>demo_randomized</code> data, average open-loop MSE drops from 0.272 to 0.048.</p>
-    <div class="figs train">
-      <figure class="fig"><a href="static/images/training_loss.png" target="_blank" rel="noopener"><img src="static/images/training_loss.png" width="1800" height="574" alt="Training loss over optimization steps for three tasks." loading="lazy"></a><figcaption>Training loss</figcaption></figure>
-      <figure class="fig"><a href="static/images/success_vs_steps.png" target="_blank" rel="noopener"><img src="static/images/success_vs_steps.png" width="1300" height="969" alt="Average success rate as a function of training steps." loading="lazy"></a><figcaption>Success vs. training steps</figcaption></figure>
-      <figure class="fig"><a href="static/images/openloop_mse.png" target="_blank" rel="noopener"><img src="static/images/openloop_mse.png" width="1300" height="756" alt="Open-loop MSE on out-of-distribution data; Ours denotes REACT." loading="lazy"></a><figcaption>OOD open-loop MSE ("Ours" = REACT)</figcaption></figure>
-    </div>
+    <p class="note">Full REACT has the lowest mean robot latency, 29 ms above human teleoperation of the same arm and about 2× faster than full-chunk <span class="pi">π<sub>0.5</sub></span>.</p>
   </div>
 </section>
 
@@ -404,6 +475,8 @@
   </div>
 </footer>
 
+<script defer src="static/vendor/katex/katex.min.js"></script>
+<script defer src="static/vendor/katex/contrib/auto-render.min.js"></script>
 <script src="static/js/main.js"></script>
 </body>
 </html>

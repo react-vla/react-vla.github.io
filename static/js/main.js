@@ -18,6 +18,19 @@
     });
   }
 
+  // Typeset \( inline \) and \[ display \] math with the self-hosted KaTeX (deferred scripts run before DOMContentLoaded).
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!window.renderMathInElement) return;
+    window.renderMathInElement(document.body, {
+      delimiters: [
+        { left: "\\[", right: "\\]", display: true },
+        { left: "\\(", right: "\\)", display: false },
+      ],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+      throwOnError: false,
+    });
+  });
+
   // Header buttons with an empty href are not ready yet; hide them.
   document.querySelectorAll("a[data-link]").forEach((a) => {
     if (!a.getAttribute("href")) a.remove();
